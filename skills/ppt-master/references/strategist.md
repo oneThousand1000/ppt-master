@@ -195,29 +195,76 @@ Baseline choice follows **content density**, not style. Common: `18px` (dense) /
 
 ### h. Image Usage Confirmation
 
-| Option | Approach | Suitable Scenarios |
-|--------|----------|-------------------|
-| **A** | No images | Data reports, process documentation |
-| **B** | User-provided | Has existing image assets |
-| **C** | AI-generated | Custom illustrations, backgrounds needed |
-| **D** | Web-sourced | Real-world reference imagery, editorial support, stock-style needs (no API key required for default providers) |
-| **E** | Placeholders | Images to be added later |
+> ⛔ **BLOCKING** — Do NOT assign `Acquire Via` values or proceed to the Design Spec until the user has answered this prompt for every identified image slot.
 
-**When recommending C** — surface its three implementation modes so the user knows "no API key" is a supported state:
+**Step 1 — Identify image slots.**
+From the content outline draft, list every slide that could carry a visual (photos, illustrations, diagrams, backgrounds). For each slot write one line:
+
+```
+Image N  |  P<NN>  |  <one-sentence description of what the image would show>
+```
+
+Example:
+```
+Image 1  |  P01  |  Cover background — abstract flowing gradient, blue-navy tones
+Image 2  |  P05  |  Team at work — diverse engineers collaborating at a laptop
+Image 3  |  P08  |  Dataset sample grid — diverse large-pose face images
+```
+
+**Step 2 — Ask the user for EACH image slot (one message, list all at once).**
+
+Present the following prompt verbatim, substituting the actual slot list:
+
+---
+
+*For each image slot below, reply with the option number. You can use one number for all (e.g. "all 2") or answer per line (e.g. "1→2, 2→3, 3→1").*
+
+| # | Option | What happens |
+|---|--------|-------------|
+| **1** | No image | Skip — use data chart, icon, or text layout instead |
+| **2** | Placeholder | Dashed box with label; you replace the image yourself later |
+| **3** | Load from folder | You already have the file — place it in `project/images/` and I'll embed it |
+| **4** | AI generate | I write a prompt and call `image_gen.py` automatically |
+| **5** | Web search | I search free stock photo providers automatically |
+
+*Image slots:*
+```
+Image 1  |  P__  |  <description>
+Image 2  |  P__  |  <description>
+...
+```
+
+---
+
+**Step 3 — Map answer to `Acquire Via`.**
+
+| User answer | `Acquire Via` value | `Status` |
+|-------------|--------------------|--------------------|
+| 1 (No image) | — (remove row, redesign slide without image) | — |
+| 2 (Placeholder) | `placeholder` | `Placeholder` |
+| 3 (Load from folder) | `user` | `Existing` |
+| 4 (AI generate) | `ai` | `Pending` |
+| 5 (Web search) | `web` | `Pending` |
+
+**When answer includes 3 (Load from folder)**, run image analysis before writing the spec:
+```bash
+python3 scripts/analyze_images.py <project_path>/images
+```
+Integrate scan results (filename, dimensions, ratio) into the image resource list.
+
+**When answer includes 4 (AI generate)** — surface its three implementation modes so the user knows "no API key" is a supported state:
 
 | Mode | Trigger | Mechanism |
 |---|---|---|
 | **Path A** | `IMAGE_BACKEND` configured (default) | `image_gen.py` runs in Step 5 |
-| **Path B** | User explicitly names host's image tool (Codex / Antigravity) | Host-native generation |
+| **Path B** | User explicitly names host's image tool | Host-native generation |
 | **Offline Manual** | Path A unavailable AND Path B not in use | Prompts written to `images/image_prompts.md`; user generates externally and places files in `project/images/` |
 
 Selection is automatic in Step 5 (A → B → Manual). Detailed contract: [`image-generator.md`](./image-generator.md) §3.2.
 
-Selections may be mixed at the row level — e.g. a deck can use C for hero illustrations while sourcing D for supporting team photos.
+Answers may be mixed across slots — e.g. Image 1 → 4 (AI), Image 2 → 3 (folder), Image 3 → 2 (placeholder).
 
-**When selection includes B**, you must run `python3 scripts/analyze_images.py <project_path>/images` before outputting the spec, and integrate scan results into the image resource list.
-
-**When B / C / D / E is selected**, add an image resource list to the spec:
+**When any slot has answer 2–5**, add an image resource list to the spec:
 
 | Column | Description |
 |--------|-------------|
