@@ -24,6 +24,13 @@
 
 **Exception**: user mid-deck adds pages or swaps templates introducing a basename/chart absent from the original batch → read the new file once, continue.
 
+**Skip condition — oversized templates**: If a template SVG exceeds the Read tool's token limit (~25 000 tokens), attempting a full read is wasteful. Apply this triage instead:
+
+1. **Read the template's `design_spec.md` first** (always small). It documents every layout variant's coordinate system and visual structure; for a well-documented template this is sufficient to generate faithfully.
+2. **Check if all referenced layouts share the same structural skeleton** (same header/footer/content-area bounds). If yes, extract coordinates from *one representative file* via a targeted Bash grep rather than reading all files individually.
+3. **Only read a specific oversized SVG** when the design spec is absent or silent about a layout variant — and even then, use Bash (grep/python3) to extract only the rect/text/path elements needed for coordinate inference, not the full file.
+4. Skip the batch read entirely for a given file when steps 1–3 give sufficient coordinate and style information. Record this skip in a comment at the top of the first generated SVG so the decision is traceable.
+
 > Note: batched prefix reads stay in the cached prompt prefix; per-page `spec_lock.md` re-reads append below and benefit from that cache. Scattered on-demand reads of layout/chart SVGs would invalidate downstream cache and sit in the compression-vulnerable mid-context region.
 
 Resolve the per-page template SVG via `spec_lock.md page_layouts` (authoritative). The legacy page-type table below is a **last-resort fallback** for legacy decks where `page_layouts` is missing.
